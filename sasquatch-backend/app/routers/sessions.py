@@ -18,6 +18,7 @@ from app.schemas import (
 )
 from app.crypto import generate_join_code, generate_session_secret, generate_pseudonym
 from app.dependencies import require_role
+from app.websocket_manager import manager
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -143,7 +144,7 @@ def join_session(
 
 
 @router.post("/{session_id}/close", response_model=SessionCloseResponse)
-def close_session(
+async def close_session(
     session_id: str,
     db: Session = Depends(get_db),
     current_teacher: User = Depends(require_role(RoleEnum.teacher)),
@@ -178,8 +179,10 @@ def close_session(
     db.commit()
     db.refresh(course_session)
 
-    # TODO (WebSocket) : notifier en push tous les participants connectés
-    # que la session est close et désactiver leur interface de soumission.
+    # Notifie en push tous les participants connectés (dashboard
+    # enseignant, et plus tard interface étudiant) que la session est
+    # close -- l'interface de soumission doit alors se désactiver (§2.2.5).
+    await manager.broadcast(str(course_session.id), {"type": "session_closed"})
 
     return course_session
 
@@ -207,7 +210,7 @@ def _get_participant_by_pseudonym_or_404(db: Session, session_id: str, pseudonym
 
 
 @router.post("/{session_id}/ban", response_model=BanResponse)
-def ban_participant(
+async def ban_participant(
     session_id: str,
     payload: BanRequest,
     db: Session = Depends(get_db),
@@ -230,11 +233,16 @@ def ban_participant(
     participant.is_banned = True
     db.commit()
 
+    await manager.broadcast(
+        str(course_session.id),
+        {"type": "participant_banned", "pseudonym": participant.pseudonym},
+    )
+
     return BanResponse(pseudonym=participant.pseudonym, is_banned=True)
 
 
 @router.post("/{session_id}/unban", response_model=BanResponse)
-def unban_participant(
+async def unban_participant(
     session_id: str,
     payload: BanRequest,
     db: Session = Depends(get_db),
@@ -251,5 +259,10 @@ def unban_participant(
     participant = _get_participant_by_pseudonym_or_404(db, course_session.id, payload.pseudonym)
     participant.is_banned = False
     db.commit()
+
+    await manager.broadcast(
+        str(course_session.id),
+        {"type": "participant_unbanned", "pseudonym": participant.pseudonym},
+    )
 
     return BanResponse(pseudonym=participant.pseudonym, is_banned=False)
