@@ -15,6 +15,23 @@ from app.websocket_manager import manager
 router = APIRouter(prefix="/questions", tags=["questions"])
 
 
+def _get_owned_session_or_error(db: Session, session_id: str, teacher: User) -> CourseSession:
+    """
+    Vérifie que la session existe et appartient bien à cet enseignant.
+    Factorisé car réutilisé par plusieurs routes de lecture (liste
+    complète, fil par pseudonyme).
+    """
+    course_session = db.query(CourseSession).filter(CourseSession.id == session_id).first()
+    if course_session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session introuvable")
+    if course_session.teacher_id != teacher.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul l'enseignant créateur peut consulter les questions de cette session",
+        )
+    return course_session
+
+
 @router.post("", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
 async def submit_question(
     payload: QuestionCreate,
@@ -122,20 +139,40 @@ def list_session_questions(
     Par défaut, exclut les questions filtrées -- cohérent avec le
     comportement du push WebSocket, qui ne les diffuse jamais non plus.
     """
-    course_session = db.query(CourseSession).filter(CourseSession.id == session_id).first()
-    if course_session is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session introuvable")
-
-    if course_session.teacher_id != current_teacher.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seul l'enseignant créateur peut consulter les questions de cette session",
-        )
+    course_session = _get_owned_session_or_error(db, session_id, current_teacher)
 
     query = db.query(Question).filter(Question.session_id == course_session.id)
     if not include_filtered:
         query = query.filter(Question.is_filtered.is_(False))
 
     results = query.order_by(Question.submitted_at.asc()).all()
+
+    return QuestionListResponse(questions=results, total=len(results))
+
+
+@router.get("/sessions/{session_id}/pseudonym/{pseudonym}", response_model=QuestionListResponse)
+def list_questions_by_pseudonym(
+    session_id: str,
+    pseudonym: str,
+    db: Session = Depends(get_db),
+    current_teacher: User = Depends(require_role(RoleEnum.teacher)),
+):
+    """
+    Fil de toutes les questions (et leurs clarifications) d'un même
+    pseudonyme au cours de la session (§2.4.1). Accessible en cliquant
+    sur un pseudonyme dans le visualiseur enseignant.
+
+    Toujours triées chronologiquement, parent et clarifications mélangés
+    dans l'ordre d'arrivée -- c'est au frontend de les ré-indenter
+    visuellement via parent_id si besoin d'un affichage en arborescence.
+    """
+    course_session = _get_owned_session_or_error(db, session_id, current_teacher)
+
+    results = (
+        db.query(Question)
+        .filter(Question.session_id == course_session.id, Question.pseudonym == pseudonym)
+        .order_by(Question.submitted_at.asc())
+        .all()
+    )
 
     return QuestionListResponse(questions=results, total=len(results))
