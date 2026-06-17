@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from datetime import datetime, timedelta
 import json
+import logging
 
 from app.database import get_db
 from app.models import User, RoleEnum, Question, SessionParticipant, DeanonymizationLog
@@ -16,8 +17,11 @@ from app.schemas import (
 )
 from app.crypto import encrypt_field, decrypt_field, searchable_hash, generate_activation_token
 from app.dependencies import require_role
+from app.email_service import send_activation_email
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+logger = logging.getLogger(__name__)
 
 ACTIVATION_TOKEN_VALIDITY_HOURS = 48
 
@@ -35,8 +39,9 @@ def create_user(
     """
     Création d'un compte par l'administrateur (étudiant, enseignant ou
     autre admin). L'identité est chiffrée avant stockage. Un token
-    d'activation est généré -- l'envoi de l'e-mail réel sera branché
-    séparément (voir app/email.py, à venir).
+    d'activation est généré et envoyé par e-mail (voir app/email_service.py).
+    Si l'envoi échoue (SMTP mal configuré, panne réseau...), le compte
+    est tout de même créé -- l'admin peut récupérer le token en base.
     """
     email_hash = searchable_hash(payload.email)
     existing = db.query(User).filter(User.email_hash == email_hash).first()
@@ -71,8 +76,18 @@ def create_user(
         )
     db.refresh(new_user)
 
-    # TODO : envoyer un e-mail à payload.email contenant le lien
-    # d'activation avec new_user.activation_token (voir app/email.py)
+    try:
+        send_activation_email(
+            to_email=payload.email,
+            prenom=payload.prenom,
+            activation_token=new_user.activation_token,
+        )
+    except Exception as exc:
+        # On ne bloque jamais la création de compte pour un souci SMTP
+        # (identifiants mal configurés, panne réseau...). L'admin peut
+        # toujours retrouver le token en base et le transmettre
+        # manuellement en attendant. On logue l'erreur pour diagnostic.
+        logger.error("Échec de l'envoi de l'e-mail d'activation à %s : %s", payload.email, exc)
 
     return new_user
 
