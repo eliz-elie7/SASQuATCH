@@ -10,12 +10,13 @@ from app.models import User, RoleEnum, CourseSession, SessionParticipant, Questi
 from app.schemas import QuestionCreate, QuestionResponse
 from app.dependencies import require_role
 from app.moderation import apply_moderation
+from app.websocket_manager import manager
 
 router = APIRouter(prefix="/questions", tags=["questions"])
 
 
 @router.post("", response_model=QuestionResponse, status_code=status.HTTP_201_CREATED)
-def submit_question(
+async def submit_question(
     payload: QuestionCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role(RoleEnum.student)),
@@ -83,7 +84,23 @@ def submit_question(
     db.commit()
     db.refresh(new_question)
 
-    # TODO (WebSocket) : si non filtrée, pousser la question en temps réel
-    # vers le dashboard de l'enseignant créateur de la session.
+    if not new_question.is_filtered:
+        # Push temps réel vers le dashboard enseignant connecté à cette
+        # session (§2.2.4). Si aucun enseignant n'est connecté en ce
+        # moment, broadcast() ne fait rien -- la question reste en BDD
+        # et sera visible via une future route GET de récupération.
+        await manager.broadcast(
+            str(course_session.id),
+            {
+                "type": "new_question",
+                "question": {
+                    "id": str(new_question.id),
+                    "pseudonym": new_question.pseudonym,
+                    "parent_id": str(new_question.parent_id) if new_question.parent_id else None,
+                    "content": new_question.content,
+                    "submitted_at": new_question.submitted_at.isoformat(),
+                },
+            },
+        )
 
     return new_question

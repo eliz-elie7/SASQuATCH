@@ -8,7 +8,7 @@ pratique en développement, à retirer en production)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, admin, sessions, questions
+from app.routers import auth, admin, sessions, questions, ws
 
 app = FastAPI(
     title="SASQuATCH API",
@@ -36,6 +36,7 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(sessions.router)
 app.include_router(questions.router)
+app.include_router(ws.router)
 
 
 @app.get("/health")
