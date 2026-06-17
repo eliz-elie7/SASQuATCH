@@ -113,6 +113,11 @@ class QuestionResponse(BaseModel):
         from_attributes = True
 
 
+class QuestionListResponse(BaseModel):
+    questions: list[QuestionResponse]
+    total: int
+
+
 # --- Bannissement ---
 
 class BanRequest(BaseModel):

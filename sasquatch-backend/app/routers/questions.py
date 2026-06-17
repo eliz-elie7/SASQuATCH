@@ -2,12 +2,12 @@
 Routes liées aux questions posées par les étudiants pendant une session.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User, RoleEnum, CourseSession, SessionParticipant, Question
-from app.schemas import QuestionCreate, QuestionResponse
+from app.schemas import QuestionCreate, QuestionResponse, QuestionListResponse
 from app.dependencies import require_role
 from app.moderation import apply_moderation
 from app.websocket_manager import manager
@@ -104,3 +104,38 @@ async def submit_question(
         )
 
     return new_question
+
+
+@router.get("/sessions/{session_id}", response_model=QuestionListResponse)
+def list_session_questions(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_teacher: User = Depends(require_role(RoleEnum.teacher)),
+    include_filtered: bool = Query(
+        default=False,
+        description="Inclure les questions filtrées par la modération automatique",
+    ),
+):
+    """
+    Liste les questions d'une session, pour affichage initial du dashboard
+    enseignant (avant que de nouvelles questions n'arrivent par WebSocket).
+    Par défaut, exclut les questions filtrées -- cohérent avec le
+    comportement du push WebSocket, qui ne les diffuse jamais non plus.
+    """
+    course_session = db.query(CourseSession).filter(CourseSession.id == session_id).first()
+    if course_session is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session introuvable")
+
+    if course_session.teacher_id != current_teacher.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seul l'enseignant créateur peut consulter les questions de cette session",
+        )
+
+    query = db.query(Question).filter(Question.session_id == course_session.id)
+    if not include_filtered:
+        query = query.filter(Question.is_filtered.is_(False))
+
+    results = query.order_by(Question.submitted_at.asc()).all()
+
+    return QuestionListResponse(questions=results, total=len(results))
