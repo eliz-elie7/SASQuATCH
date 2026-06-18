@@ -3,7 +3,13 @@
 // pour ne jamais dupliquer la gestion du token et des erreurs dans
 // chaque fichier api/*.js.
 
-const API_BASE_URL = "http://localhost:8000";
+// L'URL du backend est déduite de l'hôte utilisé pour charger la page
+// elle-même (window.location.hostname), plutôt que d'être figée en dur
+// sur "localhost". Indispensable pour l'accès depuis un téléphone : si
+// la page est chargée via http://192.168.1.42:5173, le backend doit
+// être appelé sur http://192.168.1.42:8000, pas sur "localhost"
+// (qui, depuis le téléphone, désignerait le téléphone lui-même).
+const API_BASE_URL = `http://${window.location.hostname}:8000`;
 
 /**
  * Wrapper autour de fetch() qui :
