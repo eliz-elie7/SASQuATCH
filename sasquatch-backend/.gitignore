@@ -1,0 +1,21 @@
+# Secrets -- ne JAMAIS committer, contient les clés de chiffrement,
+# le mot de passe SMTP, le secret JWT, les identifiants PostgreSQL.
+.env
+
+# Environnements virtuels Python
+venv/
+env/
+.venv/
+
+# Cache et bytecode Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Outils / éditeurs
+.vscode/
+.idea/
+*.swp
+
+# Système
+.DS_Store
