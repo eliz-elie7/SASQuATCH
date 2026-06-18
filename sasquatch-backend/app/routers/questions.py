@@ -124,7 +124,7 @@ async def submit_question(
 
 
 @router.patch("/{question_id}/satisfaction", response_model=QuestionResponse)
-def set_satisfaction(
+async def set_satisfaction(
     question_id: str,
     payload: SatisfactionUpdate,
     db: Session = Depends(get_db),
@@ -163,6 +163,18 @@ def set_satisfaction(
     question.satisfaction = payload.satisfaction
     db.commit()
     db.refresh(question)
+
+    # Push temps réel vers le dashboard enseignant : sans ça, le badge
+    # de satisfaction ne s'afficherait qu'au prochain rechargement complet
+    # du dashboard, jamais en direct (bug constaté en test manuel).
+    await manager.broadcast(
+        str(question.session_id),
+        {
+            "type": "satisfaction_updated",
+            "question_id": str(question.id),
+            "satisfaction": question.satisfaction,
+        },
+    )
 
     return question
 

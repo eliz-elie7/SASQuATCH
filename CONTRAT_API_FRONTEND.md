@@ -312,6 +312,10 @@ ws.onmessage = (event) => {
     case "session_closed":
       // désactiver l'interface, informer l'utilisateur
       break;
+    case "satisfaction_updated":
+      // data.question_id, data.satisfaction ("satisfied" | "unsatisfied")
+      // mettre à jour le badge de satisfaction sur la question concernée
+      break;
   }
 };
 

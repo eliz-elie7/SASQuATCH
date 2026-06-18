@@ -128,7 +128,11 @@ function DeanonymizeForm({ token }) {
         Action exceptionnelle et journalisée. Une justification est obligatoire.
       </p>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <Field label="ID de la question" value={questionId} onChange={(e) => setQuestionId(e.target.value)} />
+        <Field
+          label="ID de la question (transmis par l'enseignant)"
+          value={questionId}
+          onChange={(e) => setQuestionId(e.target.value)}
+        />
         <Field label="Motif" value={reason} onChange={(e) => setReason(e.target.value)} />
 
         {error && (
