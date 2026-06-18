@@ -1,1 +1,9 @@
-# config requises
+fastapi==0.137.1
+uvicorn[standard]
+sqlalchemy==2.0.51
+psycopg2-binary==2.9.12
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.2.2
+pydantic[email]==2.13.4
+cryptography==49.0.0
