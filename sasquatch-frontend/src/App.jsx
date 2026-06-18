@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { LoginPage } from "./pages/LoginPage";
+import { ActivatePage } from "./pages/ActivatePage";
 import { StudentPage } from "./pages/StudentPage";
 import { TeacherDashboard } from "./pages/TeacherDashboard";
 import { AdminPage } from "./pages/AdminPage";
@@ -9,6 +10,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/activate" element={<ActivatePage />} />
 
       <Route
         path="/student"
