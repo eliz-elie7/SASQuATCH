@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { joinSession } from "../api/sessions";
-import { submitQuestion } from "../api/questions";
+import { submitQuestion, setSatisfaction } from "../api/questions";
 import { ApiError } from "../api/client";
 
 export function StudentPage() {
@@ -96,6 +96,15 @@ function QuestionSubmissionView({ token, session, onLeave }) {
     }
   }
 
+  async function handleSetSatisfaction(questionId, satisfaction) {
+    try {
+      const updated = await setSatisfaction(token, questionId, satisfaction);
+      setSubmittedQuestions((prev) => prev.map((q) => (q.id === questionId ? updated : q)));
+    } catch {
+      // Silencieux : un échec ici n'empêche pas de continuer à utiliser la page.
+    }
+  }
+
   return (
     <div>
       <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-6">
@@ -142,8 +151,31 @@ function QuestionSubmissionView({ token, session, onLeave }) {
           <h3 className="text-sm font-medium text-slate-500 mb-2">Vos questions dans cette session</h3>
           <div className="space-y-2">
             {submittedQuestions.map((q) => (
-              <div key={q.id} className="bg-white border border-slate-200 rounded-lg p-3 text-sm text-slate-700">
-                {q.content}
+              <div key={q.id} className="bg-white border border-slate-200 rounded-lg p-3 text-sm">
+                <p className="text-slate-700">{q.content}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-slate-400">La réponse vous convient-elle ?</span>
+                  <button
+                    onClick={() => handleSetSatisfaction(q.id, "satisfied")}
+                    className={`text-xs px-2 py-1 rounded-lg ${
+                      q.satisfaction === "satisfied"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    }`}
+                  >
+                    👍 Compris
+                  </button>
+                  <button
+                    onClick={() => handleSetSatisfaction(q.id, "unsatisfied")}
+                    className={`text-xs px-2 py-1 rounded-lg ${
+                      q.satisfaction === "unsatisfied"
+                        ? "bg-red-100 text-red-700"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                    }`}
+                  >
+                    👎 Pas clair
+                  </button>
+                </div>
               </div>
             ))}
           </div>
