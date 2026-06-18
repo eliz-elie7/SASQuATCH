@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { openSession, closeSession, banParticipant, unbanParticipant } from "../api/sessions";
-import { listSessionQuestions } from "../api/questions";
+import { listSessionQuestions, listQuestionsByPseudonym } from "../api/questions";
 import { useSessionSocket } from "../hooks/useSessionSocket";
 import { ApiError } from "../api/client";
 
@@ -79,6 +79,7 @@ function SessionView({ token, session, onClosed }) {
   const [questions, setQuestions] = useState([]);
   const [bannedPseudonyms, setBannedPseudonyms] = useState(new Set());
   const [isClosed, setIsClosed] = useState(false);
+  const [selectedPseudonym, setSelectedPseudonym] = useState(null);
 
   const { isConnected, lastEvent } = useSessionSocket(session.id, token);
 
@@ -172,9 +173,19 @@ function SessionView({ token, session, onClosed }) {
             question={q}
             isBanned={bannedPseudonyms.has(q.pseudonym)}
             onToggleBan={() => handleToggleBan(q.pseudonym)}
+            onSelectPseudonym={() => setSelectedPseudonym(q.pseudonym)}
           />
         ))}
       </section>
+
+      {selectedPseudonym && (
+        <PseudonymThreadModal
+          token={token}
+          sessionId={session.id}
+          pseudonym={selectedPseudonym}
+          onClose={() => setSelectedPseudonym(null)}
+        />
+      )}
     </div>
   );
 }
@@ -190,12 +201,18 @@ function StatusBadge({ isConnected, isClosed }) {
   );
 }
 
-function QuestionCard({ question, isBanned, onToggleBan }) {
+function QuestionCard({ question, isBanned, onToggleBan, onSelectPseudonym }) {
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <span className="text-xs font-mono text-slate-400">{question.pseudonym}</span>
+          <button
+            onClick={onSelectPseudonym}
+            className="text-xs font-mono text-slate-400 hover:text-slate-600 hover:underline"
+            title="Voir le fil de ce pseudonyme"
+          >
+            {question.pseudonym}
+          </button>
           <p className="text-sm text-slate-900 mt-1">{question.content}</p>
         </div>
         <button
@@ -208,6 +225,69 @@ function QuestionCard({ question, isBanned, onToggleBan }) {
         >
           {isBanned ? "Lever le bannissement" : "Bannir"}
         </button>
+      </div>
+    </div>
+  );
+}
+
+function PseudonymThreadModal({ token, sessionId, pseudonym, onClose }) {
+  const [questions, setQuestions] = useState(null); // null = en chargement
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    listQuestionsByPseudonym(token, sessionId, pseudonym)
+      .then((data) => setQuestions(data.questions))
+      .catch((err) => setError(err instanceof ApiError ? err.message : "Erreur de connexion."));
+  }, [token, sessionId, pseudonym]);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium text-slate-900">
+            Fil de <span className="font-mono">{pseudonym}</span>
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm">
+            Fermer
+          </button>
+        </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        {questions === null && !error && (
+          <p className="text-sm text-slate-400">Chargement...</p>
+        )}
+
+        {questions && questions.length === 0 && (
+          <p className="text-sm text-slate-400">Aucune question trouvée pour ce pseudonyme.</p>
+        )}
+
+        <div className="space-y-2">
+          {questions?.map((q) => (
+            <div
+              key={q.id}
+              className={`rounded-lg p-3 text-sm border ${
+                q.is_filtered
+                  ? "bg-red-50 border-red-200 text-red-700"
+                  : "bg-slate-50 border-slate-200 text-slate-700"
+              }`}
+            >
+              {q.parent_id && (
+                <span className="text-xs text-slate-400 block mb-1">↳ Clarification</span>
+              )}
+              <p>{q.content}</p>
+              {q.is_filtered && (
+                <span className="text-xs mt-1 block">Filtrée ({q.filter_reason})</span>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
