@@ -64,21 +64,40 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
 @router.post("/activate")
 def activate_account(payload: AccountActivation, db: Session = Depends(get_db)):
     """
-    Première connexion : l'utilisateur clique le lien reçu par e-mail
-    (contenant activation_token) et choisit son mot de passe.
+    Première connexion : l'utilisateur active son compte via le lien
+    e-mail (activation_token) ou via le code court saisi manuellement
+    (activation_code). L'un des deux doit être fourni.
     """
-    user = db.query(User).filter(User.activation_token == payload.activation_token).first()
+    if not payload.activation_token and not payload.activation_code:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Fournissez un token d'activation ou un code court",
+        )
 
-    if not user:
-        raise HTTPException(status_code=404, detail="Token d'activation invalide")
+    user = None
 
-    if user.activation_token_exp and user.activation_token_exp < datetime.utcnow():
-        raise HTTPException(status_code=400, detail="Token d'activation expiré")
+    if payload.activation_token:
+        user = db.query(User).filter(User.activation_token == payload.activation_token).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Token d'activation invalide")
+        if user.activation_token_exp and user.activation_token_exp < datetime.utcnow():
+            raise HTTPException(status_code=400, detail="Token d'activation expiré")
+
+    elif payload.activation_code:
+        user = db.query(User).filter(
+            User.activation_code == payload.activation_code.upper().strip()
+        ).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="Code d'activation invalide")
+        # Le code court partage la même date d'expiration que le token long.
+        if user.activation_token_exp and user.activation_token_exp < datetime.utcnow():
+            raise HTTPException(status_code=400, detail="Code d'activation expiré")
 
     user.password_hash = hash_password(payload.new_password)
     user.is_active = True
-    user.activation_token = None  # usage unique : on le supprime après usage
+    user.activation_token = None
     user.activation_token_exp = None
+    user.activation_code = None  # supprimé après usage, comme le token
 
     db.commit()
     return {"message": "Compte activé avec succès"}

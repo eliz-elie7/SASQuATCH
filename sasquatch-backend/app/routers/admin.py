@@ -15,7 +15,7 @@ from app.schemas import (
     UserCreate, UserCreateResponse,
     DeanonymizationRequest, DeanonymizationResponse,
 )
-from app.crypto import encrypt_field, decrypt_field, searchable_hash, generate_activation_token
+from app.crypto import encrypt_field, decrypt_field, searchable_hash, generate_activation_token, generate_activation_code
 from app.dependencies import require_role
 from app.email_service import send_activation_email
 
@@ -51,6 +51,9 @@ def create_user(
             detail="Un compte existe déjà avec cet e-mail",
         )
 
+    activation_tok = generate_activation_token()
+    activation_cod = generate_activation_code()
+
     new_user = User(
         institutional_id_enc=encrypt_field(payload.institutional_id),
         nom_enc=encrypt_field(payload.nom),
@@ -60,8 +63,9 @@ def create_user(
         role=payload.role,
         password_hash="",  # vide tant que le compte n'est pas activé
         is_active=False,
-        activation_token=generate_activation_token(),
+        activation_token=activation_tok,
         activation_token_exp=datetime.utcnow() + timedelta(hours=ACTIVATION_TOKEN_VALIDITY_HOURS),
+        activation_code=activation_cod,
         created_by=current_admin.id,
     )
 
@@ -81,12 +85,9 @@ def create_user(
             to_email=payload.email,
             prenom=payload.prenom,
             activation_token=new_user.activation_token,
+            activation_code=new_user.activation_code,
         )
     except Exception as exc:
-        # On ne bloque jamais la création de compte pour un souci SMTP
-        # (identifiants mal configurés, panne réseau...). L'admin peut
-        # toujours retrouver le token en base et le transmettre
-        # manuellement en attendant. On logue l'erreur pour diagnostic.
         logger.error("Échec de l'envoi de l'e-mail d'activation à %s : %s", payload.email, exc)
 
     return new_user

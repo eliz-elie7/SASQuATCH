@@ -57,6 +57,7 @@ class User(Base):
     is_active = Column(Boolean, server_default=text("false"))
     activation_token = Column(Text, nullable=True)
     activation_token_exp = Column(TIMESTAMP, nullable=True)
+    activation_code = Column(Text, nullable=True)  # code court alternatif au lien
 
     created_at = Column(TIMESTAMP, server_default=text("now()"), nullable=False)
     created_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)

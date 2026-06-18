@@ -106,6 +106,16 @@ def generate_activation_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def generate_activation_code(length: int = 8) -> str:
+    """
+    Code court d'activation (alternative au lien pour les cas où celui-ci
+    ne fonctionne pas : client mail qui coupe les URLs, téléphone qui
+    ouvre le mauvais navigateur, etc.).
+    Même alphabet sans ambiguïté visuelle que les join_code de session.
+    """
+    return "".join(secrets.choice(_JOIN_CODE_ALPHABET) for _ in range(length))
+
+
 # --- Pseudonymes de session (HMAC-SHA256, secret par session) ---
 #
 # Contrairement à searchable_hash ci-dessus (qui utilise une clé globale

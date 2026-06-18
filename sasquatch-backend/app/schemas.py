@@ -36,7 +36,10 @@ class UserCreateResponse(BaseModel):
 # --- Activation du compte (1re connexion via lien e-mail) ---
 
 class AccountActivation(BaseModel):
-    activation_token: str
+    # L'un des deux doit être fourni : activation_token (lien e-mail)
+    # ou activation_code (code court saisi manuellement).
+    activation_token: Optional[str] = None
+    activation_code: Optional[str] = None
     new_password: str
 
 

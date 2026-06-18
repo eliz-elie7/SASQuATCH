@@ -22,13 +22,12 @@ SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173")
 
 
-def send_activation_email(to_email: str, prenom: str, activation_token: str) -> None:
+def send_activation_email(to_email: str, prenom: str, activation_token: str, activation_code: str) -> None:
     """
-    Envoie l'e-mail d'activation contenant le lien à usage unique
-    (§2.1.1). Lève une exception si l'envoi échoue -- à appeler dans un
-    bloc try/except côté route appelante pour ne pas faire échouer toute
-    la création de compte si seul l'e-mail a un problème (voir note dans
-    admin.py).
+    Envoie l'e-mail d'activation contenant le lien à usage unique ET un
+    code court alternatif (§2.1.1). Le code est utile si le lien ne
+    fonctionne pas (client mail coupant les URLs, téléphone ouvrant le
+    mauvais navigateur, etc.).
     """
     activation_link = f"{FRONTEND_BASE_URL}/activate?token={activation_token}"
 
@@ -42,7 +41,10 @@ def send_activation_email(to_email: str, prenom: str, activation_token: str) -> 
         f"Un compte SASQuATCH a été créé pour vous.\n"
         f"Activez-le et choisissez votre mot de passe via ce lien :\n"
         f"{activation_link}\n\n"
-        f"Ce lien est valable 48 heures et à usage unique.\n"
+        f"Ce lien est valable 48 heures et à usage unique.\n\n"
+        f"Si le lien ne fonctionne pas, rendez-vous sur :\n"
+        f"{FRONTEND_BASE_URL}/activate\n"
+        f"et saisissez ce code d'activation : {activation_code}\n"
     )
     html_body = f"""
     <html><body>
@@ -50,6 +52,12 @@ def send_activation_email(to_email: str, prenom: str, activation_token: str) -> 
       <p>Un compte SASQuATCH a été créé pour vous.</p>
       <p><a href="{activation_link}">Cliquez ici pour activer votre compte</a></p>
       <p>Ce lien est valable 48 heures et à usage unique.</p>
+      <hr style="border:none;border-top:1px solid #eee;margin:16px 0">
+      <p style="color:#555">Si le lien ne fonctionne pas, rendez-vous sur
+      <strong>{FRONTEND_BASE_URL}/activate</strong> et saisissez ce code :</p>
+      <p style="font-size:24px;font-weight:bold;letter-spacing:4px;font-family:monospace">
+        {activation_code}
+      </p>
     </body></html>
     """
 
