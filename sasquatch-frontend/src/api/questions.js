@@ -22,3 +22,12 @@ export function listQuestionsByPseudonym(token, sessionId, pseudonym) {
     token,
   });
 }
+
+/** Signale si la réponse à une question convient ou pas à son auteur. */
+export function setSatisfaction(token, questionId, satisfaction) {
+  return apiFetch(`/questions/${questionId}/satisfaction`, {
+    method: "PATCH",
+    token,
+    body: { satisfaction },
+  });
+}
