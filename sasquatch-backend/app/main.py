@@ -17,7 +17,10 @@ app = FastAPI(
 )
 
 # CORS : autorise le frontend React (autre origine) à appeler cette API.
-# En développement, on autorise les ports locaux courants (Vite, CRA).
+# En développement, on autorise localhost (PC) ET le sous-réseau local
+# 192.168.x.x (téléphones/tablettes sur le même Wi-Fi que le PC qui héberge
+# le backend). allow_origin_regex couvre n'importe quel port sur ce
+# sous-réseau, pratique car l'IP du PC change selon le réseau utilisé.
 # À resserrer en production avec l'URL réelle du frontend déployé.
 app.add_middleware(
     CORSMiddleware,
@@ -27,6 +30,7 @@ app.add_middleware(
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ],
+    allow_origin_regex=r"http://192\.168\.\d{1,3}\.\d{1,3}:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
