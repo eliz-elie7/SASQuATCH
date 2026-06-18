@@ -71,6 +71,13 @@ formulaire de choix de mot de passe, et appelle cette route au submit.
 
 ## Administration (rôle admin uniquement)
 
+Note de flux : le bouton "Signaler à l'admin" du dashboard enseignant
+n'appelle AUCUNE route API (cohérent avec §2.3.3 : l'enseignant ne peut
+jamais déclencher lui-même une désanonymisation). Il ouvre simplement un
+brouillon d'e-mail (`mailto:`) pré-rempli avec l'ID de la question, à
+destination de l'admin. C'est l'admin qui utilise ensuite manuellement
+`POST /admin/deanonymize` ci-dessous, de sa propre initiative.
+
 ### POST /admin/users
 Création d'un compte (étudiant ou enseignant).
 

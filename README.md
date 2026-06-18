@@ -24,7 +24,7 @@ Projet réalisé dans le cadre du Projet d'Application 3A STI — INSA Centre Va
 ## Démarrage rapide
 
 Pour cloner et lancer le projet en local, suivre le guide détaillé :
-[`sasquatch-backend/GUIDE_RECUPERATION_PROJET.md`](./sasquatch-backend/GUIDE_RECUPERATION_PROJET.md)
+[`GUIDE_RECUPERATION_PROJET.md`](./GUIDE_RECUPERATION_PROJET.md)
 
 En résumé :
 ```bash
