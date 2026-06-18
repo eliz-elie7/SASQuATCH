@@ -33,6 +33,33 @@ export function TeacherDashboard() {
   );
 }
 
+// Transforme une liste plate de questions en groupes { root, clarifications[] }.
+// Les clarifications (parent_id non null) sont rattachées à leur question
+// parente. Les questions dont le parent est introuvable (cas théoriquement
+// impossible en pratique) sont traitées comme des questions racines.
+function groupQuestions(questions) {
+  const roots = [];
+  const clarificationsByParent = {};
+
+  for (const q of questions) {
+    if (!q.parent_id) {
+      roots.push(q);
+    } else {
+      if (!clarificationsByParent[q.parent_id]) {
+        clarificationsByParent[q.parent_id] = [];
+      }
+      clarificationsByParent[q.parent_id].push(q);
+    }
+  }
+
+  return roots.map((root) => ({
+    root,
+    clarifications: (clarificationsByParent[root.id] || []).sort(
+      (a, b) => new Date(a.submitted_at) - new Date(b.submitted_at)
+    ),
+  }));
+}
+
 function OpenSessionForm({ token, onOpened }) {
   const [label, setLabel] = useState("");
   const [error, setError] = useState(null);
@@ -207,15 +234,29 @@ function SessionView({ token, session, onClosed }) {
         {questions.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">Aucune question pour l'instant.</p>
         )}
-        {questions.map((q) => (
-          <QuestionCard
-            key={q.id}
-            question={q}
-            isBanned={bannedPseudonyms.has(q.pseudonym)}
-            onToggleBan={() => handleToggleBan(q.pseudonym)}
-            onSelectPseudonym={() => setSelectedPseudonym(q.pseudonym)}
-            onFlagForDeanon={() => handleFlagForDeanon(q)}
-          />
+        {groupQuestions(questions).map(({ root, clarifications }) => (
+          <div key={root.id}>
+            <QuestionCard
+              question={root}
+              isBanned={bannedPseudonyms.has(root.pseudonym)}
+              onToggleBan={() => handleToggleBan(root.pseudonym)}
+              onSelectPseudonym={() => setSelectedPseudonym(root.pseudonym)}
+              onFlagForDeanon={() => handleFlagForDeanon(root)}
+            />
+            {clarifications.length > 0 && (
+              <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-200 pl-3">
+                {clarifications.map((c) => (
+                  <div key={c.id} className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
+                    <span className="text-xs text-slate-400 block mb-1">
+                      ↳ Clarification de <span className="font-mono">{c.pseudonym}</span>
+                    </span>
+                    <p className="text-slate-700">{c.content}</p>
+                    <SatisfactionBadge satisfaction={c.satisfaction} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
       </section>
 

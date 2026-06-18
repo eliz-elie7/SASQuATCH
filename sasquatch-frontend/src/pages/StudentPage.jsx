@@ -151,35 +151,109 @@ function QuestionSubmissionView({ token, session, onLeave }) {
           <h3 className="text-sm font-medium text-slate-500 mb-2">Vos questions dans cette session</h3>
           <div className="space-y-2">
             {submittedQuestions.map((q) => (
-              <div key={q.id} className="bg-white border border-slate-200 rounded-lg p-3 text-sm">
-                <p className="text-slate-700">{q.content}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-slate-400">La réponse vous convient-elle ?</span>
-                  <button
-                    onClick={() => handleSetSatisfaction(q.id, "satisfied")}
-                    className={`text-xs px-2 py-1 rounded-lg ${
-                      q.satisfaction === "satisfied"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                    }`}
-                  >
-                    👍 Compris
-                  </button>
-                  <button
-                    onClick={() => handleSetSatisfaction(q.id, "unsatisfied")}
-                    className={`text-xs px-2 py-1 rounded-lg ${
-                      q.satisfaction === "unsatisfied"
-                        ? "bg-red-100 text-red-700"
-                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-                    }`}
-                  >
-                    👎 Pas clair
-                  </button>
-                </div>
-              </div>
+              <SubmittedQuestionCard
+                key={q.id}
+                question={q}
+                token={token}
+                session={session}
+                onSatisfaction={(satisfaction) => handleSetSatisfaction(q.id, satisfaction)}
+                onClarificationSent={(clarification) =>
+                  setSubmittedQuestions((prev) => [...prev, clarification])
+                }
+              />
             ))}
           </div>
         </section>
+      )}
+    </div>
+  );
+}
+
+function SubmittedQuestionCard({ question, token, session, onSatisfaction, onClarificationSent }) {
+  const [showClarifyForm, setShowClarifyForm] = useState(false);
+  const [clarifyContent, setClarifyContent] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  // On masque le bouton "Clarifier" si la question est elle-même déjà
+  // une clarification (parent_id non null) : on n'imbrique pas plus
+  // d'un niveau pour garder l'interface simple.
+  const isRootQuestion = question.parent_id === null || question.parent_id === undefined;
+
+  async function handleClarify(e) {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const result = await submitQuestion(token, session.session_id, clarifyContent, question.id);
+      onClarificationSent(result);
+      setClarifyContent("");
+      setShowClarifyForm(false);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Erreur de connexion au serveur.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg p-3 text-sm">
+      {question.parent_id && (
+        <span className="text-xs text-slate-400 block mb-1">↳ Clarification</span>
+      )}
+      <p className="text-slate-700">{question.content}</p>
+
+      <div className="flex items-center gap-2 mt-2 flex-wrap">
+        <span className="text-xs text-slate-400">La réponse vous convient-elle ?</span>
+        <button
+          onClick={() => onSatisfaction("satisfied")}
+          className={`text-xs px-2 py-1 rounded-lg ${
+            question.satisfaction === "satisfied"
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+          }`}
+        >
+          👍 Compris
+        </button>
+        <button
+          onClick={() => onSatisfaction("unsatisfied")}
+          className={`text-xs px-2 py-1 rounded-lg ${
+            question.satisfaction === "unsatisfied"
+              ? "bg-red-100 text-red-700"
+              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+          }`}
+        >
+          👎 Pas clair
+        </button>
+        {isRootQuestion && (
+          <button
+            onClick={() => setShowClarifyForm((v) => !v)}
+            className="text-xs px-2 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+          >
+            {showClarifyForm ? "Annuler" : "Clarifier"}
+          </button>
+        )}
+      </div>
+
+      {showClarifyForm && (
+        <form onSubmit={handleClarify} className="mt-3 space-y-2">
+          <textarea
+            required
+            value={clarifyContent}
+            onChange={(e) => setClarifyContent(e.target.value)}
+            placeholder="Précisez votre question..."
+            rows={2}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+          />
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-slate-800 text-white rounded-lg py-1.5 px-3 text-xs font-medium hover:bg-slate-700 disabled:opacity-50 transition-colors"
+          >
+            {isSubmitting ? "Envoi..." : "Envoyer la clarification"}
+          </button>
+        </form>
       )}
     </div>
   );
