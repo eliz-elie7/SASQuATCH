@@ -118,6 +118,10 @@ class QuestionListResponse(BaseModel):
     total: int
 
 
+class SatisfactionUpdate(BaseModel):
+    satisfaction: str  # "satisfied" | "unsatisfied"
+
+
 # --- Bannissement ---
 
 class BanRequest(BaseModel):

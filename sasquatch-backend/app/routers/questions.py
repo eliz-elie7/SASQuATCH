@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User, RoleEnum, CourseSession, SessionParticipant, Question
-from app.schemas import QuestionCreate, QuestionResponse, QuestionListResponse
+from app.schemas import QuestionCreate, QuestionResponse, QuestionListResponse, SatisfactionUpdate
 from app.dependencies import require_role
 from app.moderation import apply_moderation
 from app.websocket_manager import manager
@@ -121,6 +121,50 @@ async def submit_question(
         )
 
     return new_question
+
+
+@router.patch("/{question_id}/satisfaction", response_model=QuestionResponse)
+def set_satisfaction(
+    question_id: str,
+    payload: SatisfactionUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role(RoleEnum.student)),
+):
+    """
+    Signalement de satisfaction par l'étudiant sur sa propre question
+    (§2.2.3). Seul l'auteur (même pseudonyme dans la même session) peut
+    modifier ce champ -- vérifié via session_participants, jamais par
+    user_id directement sur la question (qui ne contient que le pseudonyme).
+    """
+    if payload.satisfaction not in ("satisfied", "unsatisfied"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="satisfaction doit être 'satisfied' ou 'unsatisfied'",
+        )
+
+    question = db.query(Question).filter(Question.id == question_id).first()
+    if question is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Question introuvable")
+
+    participant = (
+        db.query(SessionParticipant)
+        .filter(
+            SessionParticipant.session_id == question.session_id,
+            SessionParticipant.user_id == current_user.id,
+        )
+        .first()
+    )
+    if participant is None or participant.pseudonym != question.pseudonym:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Vous ne pouvez signaler la satisfaction que sur vos propres questions",
+        )
+
+    question.satisfaction = payload.satisfaction
+    db.commit()
+    db.refresh(question)
+
+    return question
 
 
 @router.get("/sessions/{session_id}", response_model=QuestionListResponse)
