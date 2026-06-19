@@ -1,17 +1,15 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { openSession, closeSession, banParticipant, unbanParticipant } from "../api/sessions";
-import { listSessionQuestions, listQuestionsByPseudonym } from "../api/questions";
+import { listSessionQuestions, listQuestionsByPseudonym, clusterQuestions } from "../api/questions";
 import { useSessionSocket } from "../hooks/useSessionSocket";
 import { ApiError } from "../api/client";
 
-// Adresse de l'administrateur destinataire des demandes de
-// désanonymisation. À adapter si le compte admin change.
 const ADMIN_EMAIL = "djihintomahugnon@gmail.com";
 
 export function TeacherDashboard() {
   const { token, signOut } = useAuth();
-  const [session, setSession] = useState(null); // { id, label, join_code }
+  const [session, setSession] = useState(null);
 
   return (
     <div className="page-shell page-shell--dashboard">
@@ -36,22 +34,18 @@ export function TeacherDashboard() {
   );
 }
 
-// Transforme une liste plate de questions en groupes { root, clarifications[] }.
-// Les clarifications (parent_id non null) sont rattachées à leur question
-// parente. Les questions dont le parent est introuvable (cas théoriquement
-// impossible en pratique) sont traitées comme des questions racines.
 function groupQuestions(questions) {
   const roots = [];
   const clarificationsByParent = {};
 
-  for (const q of questions) {
-    if (!q.parent_id) {
-      roots.push(q);
+  for (const question of questions) {
+    if (!question.parent_id) {
+      roots.push(question);
     } else {
-      if (!clarificationsByParent[q.parent_id]) {
-        clarificationsByParent[q.parent_id] = [];
+      if (!clarificationsByParent[question.parent_id]) {
+        clarificationsByParent[question.parent_id] = [];
       }
-      clarificationsByParent[q.parent_id].push(q);
+      clarificationsByParent[question.parent_id].push(question);
     }
   }
 
@@ -68,10 +62,11 @@ function OpenSessionForm({ token, onOpened }) {
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
     setError(null);
     setIsSubmitting(true);
+
     try {
       const result = await openSession(token, label);
       onOpened(result);
@@ -83,13 +78,11 @@ function OpenSessionForm({ token, onOpened }) {
   }
 
   return (
-    <section className="surface-card surface-card--hero" style={{ maxWidth: 640 }}>
-      <span className="hero-badge">Nouvelle session</span>
-      <h2 className="page-title" style={{ marginTop: 14, fontSize: "1.45rem" }}>
+    <section className="surface-card surface-card--hero" style={{ maxWidth: 540 }}>
+      <h2 className="page-title" style={{ marginTop: 0, fontSize: "1.45rem" }}>
         Ouvrir une session
       </h2>
-
-      <form onSubmit={handleSubmit} className="form-stack" style={{ marginTop: 18 }}>
+      <form onSubmit={handleSubmit} className="form-stack" style={{ marginTop: 16 }}>
         <input
           type="text"
           required
@@ -113,20 +106,19 @@ function SessionView({ token, session, onClosed }) {
   const [isClosed, setIsClosed] = useState(false);
   const [selectedPseudonym, setSelectedPseudonym] = useState(null);
   const [flagFeedback, setFlagFeedback] = useState(null);
+  const [clusters, setClusters] = useState(null);
+  const [isClustering, setIsClustering] = useState(false);
 
   const { isConnected, lastEvent } = useSessionSocket(session.id, token);
 
-  // Chargement initial : récupère les questions déjà soumises avant que
-  // le WebSocket ait été ouvert (voir CONTRAT_API_FRONTEND.md).
   useEffect(() => {
     listSessionQuestions(token, session.id)
       .then((data) => setQuestions(data.questions))
       .catch(() => {
-        /* silencieux : le dashboard reste utilisable même si ce chargement échoue */
+        /* silencieux */
       });
   }, [session.id, token]);
 
-  // Traitement des événements WebSocket reçus en temps réel.
   useEffect(() => {
     if (!lastEvent) return;
 
@@ -149,8 +141,8 @@ function SessionView({ token, session, onClosed }) {
         break;
       case "satisfaction_updated":
         setQuestions((prev) =>
-          prev.map((q) =>
-            q.id === lastEvent.question_id ? { ...q, satisfaction: lastEvent.satisfaction } : q
+          prev.map((question) =>
+            question.id === lastEvent.question_id ? { ...question, satisfaction: lastEvent.satisfaction } : question
           )
         );
         break;
@@ -172,11 +164,21 @@ function SessionView({ token, session, onClosed }) {
     }
   }
 
+  async function handleCluster() {
+    setIsClustering(true);
+    try {
+      const visibleQuestions = questions.filter((question) => !question.is_filtered);
+      if (visibleQuestions.length < 2) return;
+      const result = await clusterQuestions(token, visibleQuestions);
+      setClusters(result);
+    } catch {
+      /* silencieux */
+    } finally {
+      setIsClustering(false);
+    }
+  }
+
   function handleFlagForDeanon(question) {
-    // Pas d'appel API ici : on ne peut PAS déclencher la désanonymisation
-    // depuis l'interface enseignant (§2.3.3, réservé à l'admin). On se
-    // contente d'ouvrir un brouillon d'e-mail pré-rempli vers l'admin,
-    // qui décidera lui-même s'il donne suite à la demande.
     const subject = `[SASQuATCH] Demande de désanonymisation - session ${session.label}`;
     const body = [
       "Bonjour,",
@@ -196,48 +198,48 @@ function SessionView({ token, session, onClosed }) {
     const mailtoUrl = `mailto:${ADMIN_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     window.location.href = mailtoUrl;
 
-    setFlagFeedback("Ouverture de votre client mail...");
-    setTimeout(() => setFlagFeedback(null), 4000);
+    setFlagFeedback("Ouverture du client mail...");
+    setTimeout(() => setFlagFeedback(null), 3000);
   }
+
+  const visibleQuestions = questions.filter((question) => !question.is_filtered);
 
   return (
     <div className="dashboard-layout">
       <section className="surface-card">
         <div className="dashboard-topbar" style={{ alignItems: "center" }}>
           <div>
-            <span className="hero-badge">Session en cours</span>
-            <h2 className="page-title" style={{ marginTop: 12, fontSize: "1.5rem" }}>
+            <span className="soft-chip">Session active</span>
+            <h2 className="page-title" style={{ marginTop: 12, fontSize: "1.45rem" }}>
               {session.label}
             </h2>
-            <p className="page-subtitle" style={{ marginTop: 8 }}>
-              Code :{" "}
-              <span className="field-input--mono" style={{ padding: 0 }}>{session.join_code}</span>
+            <p className="field-hint" style={{ marginTop: 8 }}>
+              Code : <span className="field-input--mono" style={{ padding: 0 }}>{session.join_code}</span>
             </p>
           </div>
           <div className="topbar-actions">
             <StatusBadge isConnected={isConnected} isClosed={isClosed} />
             {!isClosed && (
-              <button
-                onClick={handleClose}
-                className="ghost-btn"
-              >
-                Clôturer la session
+              <button onClick={handleClose} className="ghost-btn">
+                Clôturer
               </button>
             )}
           </div>
         </div>
       </section>
 
-      {isClosed && (
-        <p className="notice notice--warning">
-          Cette session a été clôturée.
-        </p>
+      {!isClosed && visibleQuestions.length >= 2 && (
+        <div>
+          <button onClick={handleCluster} disabled={isClustering} className="secondary-btn">
+            {isClustering ? "Analyse..." : "Regrouper par thèmes"}
+          </button>
+        </div>
       )}
 
+      {isClosed && <p className="notice notice--warning">Cette session a été clôturée.</p>}
+
       <section className="mini-list mini-list--gap-lg">
-        {questions.length === 0 && (
-          <p className="empty-state">Aucune question pour l'instant.</p>
-        )}
+        {questions.length === 0 && <p className="empty-state">Aucune question pour l'instant.</p>}
         {groupQuestions(questions).map(({ root, clarifications }) => (
           <div key={root.id}>
             <QuestionCard
@@ -249,13 +251,13 @@ function SessionView({ token, session, onClosed }) {
             />
             {clarifications.length > 0 && (
               <div className="thread-line mini-list" style={{ marginTop: 10 }}>
-                {clarifications.map((c) => (
-                  <div key={c.id} className="question-card question-card--compact">
+                {clarifications.map((clarification) => (
+                  <div key={clarification.id} className="question-card question-card--compact">
                     <span className="soft-chip" style={{ marginBottom: 8 }}>
-                      Clarification de <span className="field-input--mono" style={{ padding: 0 }}>{c.pseudonym}</span>
+                      Clarification de <span className="field-input--mono" style={{ padding: 0 }}>{clarification.pseudonym}</span>
                     </span>
-                    <p style={{ margin: 0 }}>{c.content}</p>
-                    <SatisfactionBadge satisfaction={c.satisfaction} />
+                    <p style={{ margin: 0 }}>{clarification.content}</p>
+                    <SatisfactionBadge satisfaction={clarification.satisfaction} />
                   </div>
                 ))}
               </div>
@@ -264,11 +266,9 @@ function SessionView({ token, session, onClosed }) {
         ))}
       </section>
 
-      {flagFeedback && (
-        <div className="floating-toast surface-card surface-card--compact" style={{ padding: "0.8rem 1rem" }}>
-          {flagFeedback}
-        </div>
-      )}
+      {flagFeedback && <div className="floating-toast surface-card surface-card--compact">{flagFeedback}</div>}
+
+      {clusters && <ClusterModal clusters={clusters} onClose={() => setClusters(null)} />}
 
       {selectedPseudonym && (
         <PseudonymThreadModal
@@ -286,6 +286,7 @@ function StatusBadge({ isConnected, isClosed }) {
   if (isClosed) {
     return <span className="status-chip status-chip--closed">Clôturée</span>;
   }
+
   return isConnected ? (
     <span className="status-chip status-chip--active">Temps réel actif</span>
   ) : (
@@ -302,7 +303,7 @@ function QuestionCard({ question, isBanned, onToggleBan, onSelectPseudonym, onFl
             onClick={onSelectPseudonym}
             className="ghost-btn"
             style={{ padding: 0, alignSelf: "flex-start", fontSize: "0.76rem" }}
-            title="Voir le fil de ce pseudonyme"
+            title="Voir le fil"
           >
             {question.pseudonym}
           </button>
@@ -310,17 +311,10 @@ function QuestionCard({ question, isBanned, onToggleBan, onSelectPseudonym, onFl
           <SatisfactionBadge satisfaction={question.satisfaction} />
         </div>
         <div className="question-card__actions">
-          <button
-            onClick={onToggleBan}
-            className={isBanned ? "secondary-btn" : "secondary-btn"}
-          >
+          <button onClick={onToggleBan} className="secondary-btn" type="button">
             {isBanned ? "Lever le bannissement" : "Bannir"}
           </button>
-          <button
-            onClick={onFlagForDeanon}
-            className="secondary-btn"
-            title="Ouvrir un e-mail pré-rempli pour signaler cette question à l'administrateur"
-          >
+          <button onClick={onFlagForDeanon} className="secondary-btn" type="button">
             Signaler à l'admin
           </button>
         </div>
@@ -333,14 +327,11 @@ function SatisfactionBadge({ satisfaction }) {
   if (!satisfaction) return null;
 
   const isSatisfied = satisfaction === "satisfied";
-  return (
-    <span className={`status-chip ${isSatisfied ? "status-chip--satisfied" : "status-chip--danger"}`}>
-      {isSatisfied ? "👍 Compris" : "👎 Pas clair"}
-    </span>
-  );
+  return <span className={`status-chip ${isSatisfied ? "status-chip--satisfied" : "status-chip--danger"}`}>{isSatisfied ? "Compris" : "Pas clair"}</span>;
 }
+
 function PseudonymThreadModal({ token, sessionId, pseudonym, onClose }) {
-  const [questions, setQuestions] = useState(null); // null = en chargement
+  const [questions, setQuestions] = useState(null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -362,34 +353,47 @@ function PseudonymThreadModal({ token, sessionId, pseudonym, onClose }) {
         </div>
 
         {error && <p className="notice notice--error">{error}</p>}
-
-        {questions === null && !error && (
-          <p className="empty-state" style={{ padding: "1rem 0" }}>Chargement...</p>
-        )}
-
-        {questions && questions.length === 0 && (
-          <p className="empty-state" style={{ padding: "1rem 0" }}>Aucune question trouvée pour ce pseudonyme.</p>
-        )}
+        {questions === null && !error && <p className="empty-state" style={{ padding: "1rem 0" }}>Chargement...</p>}
+        {questions && questions.length === 0 && <p className="empty-state" style={{ padding: "1rem 0" }}>Aucune question trouvée.</p>}
 
         <div className="mini-list">
-          {questions?.map((q) => (
-            <div
-              key={q.id}
-              className={`question-card question-card--compact ${
-                q.is_filtered
-                  ? ""
-                  : ""
-              }`}
-            >
-              {q.parent_id && (
-                <span className="soft-chip" style={{ marginBottom: 8 }}>Clarification</span>
-              )}
-              <p style={{ margin: 0, color: q.is_filtered ? "#b42318" : "var(--text)" }}>{q.content}</p>
-              {q.is_filtered && (
+          {questions?.map((question) => (
+            <div key={question.id} className="question-card question-card--compact">
+              {question.parent_id && <span className="soft-chip" style={{ marginBottom: 8 }}>Clarification</span>}
+              <p style={{ margin: 0 }}>{question.content}</p>
+              {question.is_filtered && (
                 <span className="status-chip status-chip--warning" style={{ marginTop: 8 }}>
-                  Filtrée ({q.filter_reason})
+                  Filtrée ({question.filter_reason})
                 </span>
               )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClusterModal({ clusters, onClose }) {
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="dashboard-topbar" style={{ alignItems: "center", marginBottom: 16 }}>
+          <h3 className="page-title" style={{ fontSize: "1.35rem" }}>Regroupement thématique</h3>
+          <button onClick={onClose} className="ghost-btn">
+            Fermer
+          </button>
+        </div>
+
+        <div className="mini-list">
+          {Object.entries(clusters).map(([theme, questions]) => (
+            <div key={theme} className="question-card question-card--compact">
+              <p style={{ margin: 0, fontWeight: 700 }}>{theme} ({questions.length})</p>
+              <div className="mini-list" style={{ marginTop: 10 }}>
+                {questions.map((question) => (
+                  <p key={question.id} style={{ margin: 0, color: "var(--text-muted)" }}>{question.content}</p>
+                ))}
+              </div>
             </div>
           ))}
         </div>
