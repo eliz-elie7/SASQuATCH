@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict dqgot7cbv4R42v1J1sgikYqgzklBkwJ9ENLqG1V7IIX0EjPaGtPc0q1dt1RxOxP
+\restrict 8fxvDNqVfIKnWs79cd5u7YMLsd5JscwKYBKbMKTfYcI0SaeQRujkJahP3IVJ4KA
 
 -- Dumped from database version 18.3
 -- Dumped by pg_dump version 18.3
@@ -152,7 +152,9 @@ CREATE TABLE public.users (
     activation_token text,
     activation_token_exp timestamp without time zone,
     created_at timestamp without time zone DEFAULT now() NOT NULL,
-    created_by uuid
+    created_by uuid,
+    email_hash text NOT NULL,
+    activation_code text
 );
 
 
@@ -223,11 +225,11 @@ ALTER TABLE ONLY public.sessions
 
 
 --
--- Name: users users_email_enc_key; Type: CONSTRAINT; Schema: public; Owner: sasquatch_dev_user
+-- Name: users users_email_hash_key; Type: CONSTRAINT; Schema: public; Owner: sasquatch_dev_user
 --
 
 ALTER TABLE ONLY public.users
-    ADD CONSTRAINT users_email_enc_key UNIQUE (email_enc);
+    ADD CONSTRAINT users_email_hash_key UNIQUE (email_hash);
 
 
 --
@@ -330,5 +332,5 @@ ALTER TABLE ONLY public.users
 -- PostgreSQL database dump complete
 --
 
-\unrestrict dqgot7cbv4R42v1J1sgikYqgzklBkwJ9ENLqG1V7IIX0EjPaGtPc0q1dt1RxOxP
+\unrestrict 8fxvDNqVfIKnWs79cd5u7YMLsd5JscwKYBKbMKTfYcI0SaeQRujkJahP3IVJ4KA
 

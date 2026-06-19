@@ -11,12 +11,17 @@ export function login(email, password) {
 }
 
 /**
- * Activation du compte (première connexion via lien e-mail).
- * Retourne { message }.
+ * Activation du compte (première connexion).
+ * Passer soit activationToken (depuis le lien e-mail), soit activationCode
+ * (code court saisi manuellement). L'autre doit être null.
  */
-export function activateAccount(activationToken, newPassword) {
+export function activateAccount(activationToken, activationCode, newPassword) {
   return apiFetch("/auth/activate", {
     method: "POST",
-    body: { activation_token: activationToken, new_password: newPassword },
+    body: {
+      activation_token: activationToken,
+      activation_code: activationCode,
+      new_password: newPassword,
+    },
   });
 }

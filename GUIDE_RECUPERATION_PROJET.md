@@ -38,12 +38,13 @@ CREATE DATABASE sasquatch_db OWNER sasquatch_dev_user;
 \q
 ```
 
-Appliquez le schéma SQL :
+Appliquez le schéma SQL et les migrations :
 
 ```bash
 cd sasquatch-backend
 psql -U sasquatch_dev_user -d sasquatch_db -f schema_actuel.sql
 psql -U sasquatch_dev_user -d sasquatch_db -f migrations/001_add_email_hash.sql
+psql -U sasquatch_dev_user -d sasquatch_db -f migrations/002_add_activation_code.sql
 ```
 
 (Demandez à Eliezer le fichier `schema_actuel.sql` à jour s'il n'est pas
@@ -109,9 +110,10 @@ Ouvrez `http://localhost:5173`.
 2. Créez un compte étudiant et un compte enseignant via l'interface admin
 3. Si SMTP n'est pas configuré, récupérez le token d'activation directement en base :
    ```bash
-   psql -U sasquatch_dev_user -d sasquatch_db -c "SELECT id, role, activation_token FROM users WHERE is_active = false;"
+   psql -U sasquatch_dev_user -d sasquatch_db -c "SELECT id, role, activation_token, activation_code FROM users WHERE is_active = false;"
    ```
-4. Activez les comptes via `http://localhost:5173/activate?token=LE_TOKEN`
+4. Activez les comptes via le lien `http://localhost:5173/activate?token=LE_TOKEN`,
+   ou en allant sur `http://localhost:5173/activate` et en saisissant le code court (`activation_code`)
 5. Testez le parcours complet : ouverture de session (enseignant),
    jonction (étudiant), soumission de question, apparition en temps réel
 
