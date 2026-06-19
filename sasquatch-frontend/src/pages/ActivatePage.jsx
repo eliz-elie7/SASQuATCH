@@ -52,12 +52,14 @@ export function ActivatePage() {
   if (isDone) {
     return (
       <CenteredCard>
-        <p className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+        <span className="hero-badge">Compte activé</span>
+        <p className="notice notice--success" style={{ marginTop: 16 }}>
           Votre compte a été activé avec succès.
         </p>
         <Link
           to="/login"
-          className="mt-4 block text-center bg-slate-900 text-white rounded-lg py-2 text-sm font-medium hover:bg-slate-800 transition-colors"
+          className="primary-btn"
+          style={{ marginTop: 16, display: "block", textAlign: "center", textDecoration: "none" }}
         >
           Se connecter
         </Link>
@@ -67,17 +69,19 @@ export function ActivatePage() {
 
   return (
     <CenteredCard>
-      <h1 className="text-xl font-semibold text-slate-900">Activer votre compte</h1>
-      <p className="text-slate-500 text-sm mt-1 mb-6">Choisissez votre mot de passe</p>
+      <span className="hero-badge">Première connexion</span>
+      <h1 className="page-title" style={{ marginTop: 14 }}>
+        Activer votre compte
+      </h1>
+      <p className="page-subtitle">Choisissez votre mot de passe pour finaliser votre accès.</p>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="form-stack" style={{ marginTop: 20 }}>
         {/* Champ de code court — affiché uniquement si on n'a pas de token dans l'URL */}
         {!tokenFromUrl && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Code d'activation
-              <span className="text-xs font-normal text-slate-400 ml-1">(reçu par e-mail)</span>
-            </label>
+          <label className="field">
+            <span className="field-label">
+              Code d'activation <span className="field-hint">(reçu par e-mail)</span>
+            </span>
             <input
               type="text"
               required
@@ -85,46 +89,48 @@ export function ActivatePage() {
               onChange={(e) => setManualCode(e.target.value.toUpperCase())}
               placeholder="Ex: AB3K7M2P"
               maxLength={8}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono uppercase tracking-widest focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="field-input field-input--mono"
             />
-          </div>
+          </label>
         )}
 
         {tokenFromUrl && (
-          <p className="text-xs text-slate-400 bg-slate-50 rounded-lg px-3 py-2 mb-4">
+          <p className="notice notice--info">
             Lien d'activation reconnu — choisissez simplement votre mot de passe.
           </p>
         )}
 
-        <label className="block text-sm font-medium text-slate-700 mb-1">Mot de passe</label>
+        <label className="field">
+          <span className="field-label">Mot de passe</span>
         <input
           type="password"
           required
           minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="field-input"
         />
+        </label>
 
-        <label className="block text-sm font-medium text-slate-700 mb-1">Confirmer le mot de passe</label>
+        <label className="field">
+          <span className="field-label">Confirmer le mot de passe</span>
         <input
           type="password"
           required
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="field-input"
         />
+        </label>
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
-            {error}
-          </p>
+          <p className="notice notice--error">{error}</p>
         )}
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-slate-900 text-white rounded-lg py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
+          className="primary-btn"
         >
           {isSubmitting ? "Activation..." : "Activer mon compte"}
         </button>
@@ -135,8 +141,8 @@ export function ActivatePage() {
 
 function CenteredCard({ children }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-8 w-full max-w-sm">
+    <div className="page-shell page-shell--auth">
+      <div className="surface-card surface-card--hero" style={{ width: "min(460px, 100%)" }}>
         {children}
       </div>
     </div>

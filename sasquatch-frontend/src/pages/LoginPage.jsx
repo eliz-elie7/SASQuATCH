@@ -40,44 +40,43 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white border border-slate-200 rounded-xl shadow-sm p-8 w-full max-w-sm"
-      >
-        <h1 className="text-xl font-semibold text-slate-900">SASQuATCH</h1>
-        <p className="text-slate-500 text-sm mt-1 mb-6">Connexion à votre espace</p>
+    <div className="page-shell page-shell--auth">
+      <form onSubmit={handleSubmit} className="surface-card surface-card--hero" style={{ width: "min(420px, 100%)" }}>
+        <div>
+          <p className="page-kicker">SASQuATCH</p>
+          <h2 className="page-title" style={{ marginTop: 0, fontSize: "1.45rem" }}>
+            Connexion
+          </h2>
+        </div>
 
-        <label className="block text-sm font-medium text-slate-700 mb-1">E-mail</label>
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-slate-400"
-          placeholder="prenom.nom@insa-cvl.fr"
-        />
+        <label className="field">
+          <span className="field-label">E-mail</span>
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="field-input"
+            placeholder="email"
+            autoComplete="email"
+          />
+        </label>
 
-        <label className="block text-sm font-medium text-slate-700 mb-1">Mot de passe</label>
-        <input
-          type="password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm mb-4 focus:outline-none focus:ring-2 focus:ring-slate-400"
-        />
+        <label className="field">
+          <span className="field-label">Mot de passe</span>
+          <input
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="field-input"
+            autoComplete="current-password"
+          />
+        </label>
 
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
-            {error}
-          </p>
-        )}
+        {error && <p className="notice notice--error">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full bg-slate-900 text-white rounded-lg py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
-        >
+        <button type="submit" disabled={isSubmitting} className="primary-btn">
           {isSubmitting ? "Connexion..." : "Se connecter"}
         </button>
       </form>

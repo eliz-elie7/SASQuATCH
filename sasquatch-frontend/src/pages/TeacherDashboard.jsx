@@ -14,14 +14,17 @@ export function TeacherDashboard() {
   const [session, setSession] = useState(null); // { id, label, join_code }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-xl font-semibold text-slate-900">Dashboard enseignant</h1>
-          <button onClick={signOut} className="text-sm text-slate-500 hover:text-slate-700">
+    <div className="page-shell page-shell--dashboard">
+      <div className="page-shell__inner dashboard-layout" style={{ maxWidth: 1120 }}>
+        <header className="dashboard-topbar">
+          <div>
+            <p className="page-kicker">Espace enseignant</p>
+            <h1 className="page-title">Dashboard enseignant</h1>
+          </div>
+          <button onClick={signOut} className="ghost-btn">
             Se déconnecter
           </button>
-        </div>
+        </header>
 
         {!session ? (
           <OpenSessionForm token={token} onOpened={setSession} />
@@ -80,25 +83,23 @@ function OpenSessionForm({ token, onOpened }) {
   }
 
   return (
-    <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 max-w-md">
-      <h2 className="font-medium text-slate-900 mb-4">Ouvrir une session de cours</h2>
-      <form onSubmit={handleSubmit} className="space-y-3">
+    <section className="surface-card surface-card--hero" style={{ maxWidth: 640 }}>
+      <span className="hero-badge">Nouvelle session</span>
+      <h2 className="page-title" style={{ marginTop: 14, fontSize: "1.45rem" }}>
+        Ouvrir une session
+      </h2>
+
+      <form onSubmit={handleSubmit} className="form-stack" style={{ marginTop: 18 }}>
         <input
           type="text"
           required
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Ex: Cours Réseaux S6"
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="field-input"
         />
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
-        )}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-slate-900 text-white rounded-lg py-2 px-4 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
-        >
+        {error && <p className="notice notice--error">{error}</p>}
+        <button type="submit" disabled={isSubmitting} className="primary-btn">
           {isSubmitting ? "Ouverture..." : "Ouvrir la session"}
         </button>
       </form>
@@ -200,22 +201,25 @@ function SessionView({ token, session, onClosed }) {
   }
 
   return (
-    <div>
-      <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-6">
-        <div className="flex items-center justify-between">
+    <div className="dashboard-layout">
+      <section className="surface-card">
+        <div className="dashboard-topbar" style={{ alignItems: "center" }}>
           <div>
-            <h2 className="font-medium text-slate-900">{session.label}</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Code de session :{" "}
-              <span className="font-mono font-semibold text-slate-900 text-base">{session.join_code}</span>
+            <span className="hero-badge">Session en cours</span>
+            <h2 className="page-title" style={{ marginTop: 12, fontSize: "1.5rem" }}>
+              {session.label}
+            </h2>
+            <p className="page-subtitle" style={{ marginTop: 8 }}>
+              Code :{" "}
+              <span className="field-input--mono" style={{ padding: 0 }}>{session.join_code}</span>
             </p>
           </div>
-          <div className="text-right">
+          <div className="topbar-actions">
             <StatusBadge isConnected={isConnected} isClosed={isClosed} />
             {!isClosed && (
               <button
                 onClick={handleClose}
-                className="mt-2 block text-sm text-red-600 hover:text-red-700"
+                className="ghost-btn"
               >
                 Clôturer la session
               </button>
@@ -225,14 +229,14 @@ function SessionView({ token, session, onClosed }) {
       </section>
 
       {isClosed && (
-        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+        <p className="notice notice--warning">
           Cette session a été clôturée.
         </p>
       )}
 
-      <section className="space-y-3">
+      <section className="mini-list mini-list--gap-lg">
         {questions.length === 0 && (
-          <p className="text-sm text-slate-400 text-center py-8">Aucune question pour l'instant.</p>
+          <p className="empty-state">Aucune question pour l'instant.</p>
         )}
         {groupQuestions(questions).map(({ root, clarifications }) => (
           <div key={root.id}>
@@ -244,13 +248,13 @@ function SessionView({ token, session, onClosed }) {
               onFlagForDeanon={() => handleFlagForDeanon(root)}
             />
             {clarifications.length > 0 && (
-              <div className="ml-6 mt-1 space-y-1 border-l-2 border-slate-200 pl-3">
+              <div className="thread-line mini-list" style={{ marginTop: 10 }}>
                 {clarifications.map((c) => (
-                  <div key={c.id} className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-sm">
-                    <span className="text-xs text-slate-400 block mb-1">
-                      ↳ Clarification de <span className="font-mono">{c.pseudonym}</span>
+                  <div key={c.id} className="question-card question-card--compact">
+                    <span className="soft-chip" style={{ marginBottom: 8 }}>
+                      Clarification de <span className="field-input--mono" style={{ padding: 0 }}>{c.pseudonym}</span>
                     </span>
-                    <p className="text-slate-700">{c.content}</p>
+                    <p style={{ margin: 0 }}>{c.content}</p>
                     <SatisfactionBadge satisfaction={c.satisfaction} />
                   </div>
                 ))}
@@ -261,7 +265,7 @@ function SessionView({ token, session, onClosed }) {
       </section>
 
       {flagFeedback && (
-        <div className="fixed bottom-6 right-6 bg-slate-900 text-white text-sm rounded-lg px-4 py-2 shadow-lg">
+        <div className="floating-toast surface-card surface-card--compact" style={{ padding: "0.8rem 1rem" }}>
           {flagFeedback}
         </div>
       )}
@@ -280,51 +284,48 @@ function SessionView({ token, session, onClosed }) {
 
 function StatusBadge({ isConnected, isClosed }) {
   if (isClosed) {
-    return <span className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-500">Clôturée</span>;
+    return <span className="status-chip status-chip--closed">Clôturée</span>;
   }
   return isConnected ? (
-    <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">● Temps réel actif</span>
+    <span className="status-chip status-chip--active">Temps réel actif</span>
   ) : (
-    <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">● Déconnecté</span>
+    <span className="status-chip status-chip--offline">Déconnecté</span>
   );
 }
 
 function QuestionCard({ question, isBanned, onToggleBan, onSelectPseudonym, onFlagForDeanon }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <article className="question-card">
+      <div className="question-card__header">
+        <div className="question-card__meta">
           <button
             onClick={onSelectPseudonym}
-            className="text-xs font-mono text-slate-400 hover:text-slate-600 hover:underline"
+            className="ghost-btn"
+            style={{ padding: 0, alignSelf: "flex-start", fontSize: "0.76rem" }}
             title="Voir le fil de ce pseudonyme"
           >
             {question.pseudonym}
           </button>
-          <p className="text-sm text-slate-900 mt-1">{question.content}</p>
+          <p style={{ margin: 0, fontSize: "0.98rem", lineHeight: 1.6 }}>{question.content}</p>
           <SatisfactionBadge satisfaction={question.satisfaction} />
         </div>
-        <div className="flex flex-col gap-1 shrink-0 items-end">
+        <div className="question-card__actions">
           <button
             onClick={onToggleBan}
-            className={`text-xs px-2 py-1 rounded-lg ${
-              isBanned
-                ? "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                : "bg-red-50 text-red-600 hover:bg-red-100"
-            }`}
+            className={isBanned ? "secondary-btn" : "secondary-btn"}
           >
             {isBanned ? "Lever le bannissement" : "Bannir"}
           </button>
           <button
             onClick={onFlagForDeanon}
-            className="text-xs px-2 py-1 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100"
+            className="secondary-btn"
             title="Ouvrir un e-mail pré-rempli pour signaler cette question à l'administrateur"
           >
             Signaler à l'admin
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -333,11 +334,7 @@ function SatisfactionBadge({ satisfaction }) {
 
   const isSatisfied = satisfaction === "satisfied";
   return (
-    <span
-      className={`inline-block text-xs mt-1 px-2 py-0.5 rounded-full ${
-        isSatisfied ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-      }`}
-    >
+    <span className={`status-chip ${isSatisfied ? "status-chip--satisfied" : "status-chip--danger"}`}>
       {isSatisfied ? "👍 Compris" : "👎 Pas clair"}
     </span>
   );
@@ -353,49 +350,45 @@ function PseudonymThreadModal({ token, sessionId, pseudonym, onClose }) {
   }, [token, sessionId, pseudonym]);
 
   return (
-    <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-xl shadow-lg max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium text-slate-900">
-            Fil de <span className="font-mono">{pseudonym}</span>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+        <div className="dashboard-topbar" style={{ alignItems: "center", marginBottom: 16 }}>
+          <h3 className="page-title" style={{ fontSize: "1.35rem" }}>
+            Fil de <span className="field-input--mono" style={{ padding: 0 }}>{pseudonym}</span>
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm">
+          <button onClick={onClose} className="ghost-btn">
             Fermer
           </button>
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="notice notice--error">{error}</p>}
 
         {questions === null && !error && (
-          <p className="text-sm text-slate-400">Chargement...</p>
+          <p className="empty-state" style={{ padding: "1rem 0" }}>Chargement...</p>
         )}
 
         {questions && questions.length === 0 && (
-          <p className="text-sm text-slate-400">Aucune question trouvée pour ce pseudonyme.</p>
+          <p className="empty-state" style={{ padding: "1rem 0" }}>Aucune question trouvée pour ce pseudonyme.</p>
         )}
 
-        <div className="space-y-2">
+        <div className="mini-list">
           {questions?.map((q) => (
             <div
               key={q.id}
-              className={`rounded-lg p-3 text-sm border ${
+              className={`question-card question-card--compact ${
                 q.is_filtered
-                  ? "bg-red-50 border-red-200 text-red-700"
-                  : "bg-slate-50 border-slate-200 text-slate-700"
+                  ? ""
+                  : ""
               }`}
             >
               {q.parent_id && (
-                <span className="text-xs text-slate-400 block mb-1">↳ Clarification</span>
+                <span className="soft-chip" style={{ marginBottom: 8 }}>Clarification</span>
               )}
-              <p>{q.content}</p>
+              <p style={{ margin: 0, color: q.is_filtered ? "#b42318" : "var(--text)" }}>{q.content}</p>
               {q.is_filtered && (
-                <span className="text-xs mt-1 block">Filtrée ({q.filter_reason})</span>
+                <span className="status-chip status-chip--warning" style={{ marginTop: 8 }}>
+                  Filtrée ({q.filter_reason})
+                </span>
               )}
             </div>
           ))}

@@ -9,14 +9,17 @@ export function StudentPage() {
   const [session, setSession] = useState(null); // { session_id, label, pseudonym }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-lg mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-xl font-semibold text-slate-900">Espace étudiant</h1>
-          <button onClick={signOut} className="text-sm text-slate-500 hover:text-slate-700">
+    <div className="page-shell page-shell--dashboard">
+      <div className="page-shell__inner dashboard-layout" style={{ maxWidth: 1040 }}>
+        <header className="dashboard-topbar">
+          <div>
+            <p className="page-kicker">Espace étudiant</p>
+            <h1 className="page-title">Questions en direct</h1>
+          </div>
+          <button onClick={signOut} className="ghost-btn">
             Se déconnecter
           </button>
-        </div>
+        </header>
 
         {!session ? (
           <JoinSessionForm token={token} onJoined={setSession} />
@@ -48,9 +51,12 @@ function JoinSessionForm({ token, onJoined }) {
   }
 
   return (
-    <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-      <h2 className="font-medium text-slate-900 mb-4">Rejoindre une session</h2>
-      <form onSubmit={handleSubmit} className="space-y-3">
+    <section className="surface-card surface-card--hero" style={{ maxWidth: 520 }}>
+      <h2 className="page-title" style={{ marginTop: 0, fontSize: "1.45rem" }}>
+        Rejoindre une session
+      </h2>
+
+      <form onSubmit={handleSubmit} className="form-stack" style={{ marginTop: 16 }}>
         <input
           type="text"
           required
@@ -58,16 +64,10 @@ function JoinSessionForm({ token, onJoined }) {
           onChange={(e) => setJoinCode(e.target.value)}
           placeholder="Code de session (ex: H549ME)"
           maxLength={6}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-slate-400"
+          className="field-input field-input--mono"
         />
-        {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
-        )}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-slate-900 text-white rounded-lg py-2 px-4 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
-        >
+        {error && <p className="notice notice--error">{error}</p>}
+        <button type="submit" disabled={isSubmitting} className="primary-btn">
           {isSubmitting ? "Connexion..." : "Rejoindre"}
         </button>
       </form>
@@ -106,50 +106,58 @@ function QuestionSubmissionView({ token, session, onLeave }) {
   }
 
   return (
-    <div>
-      <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-6">
-        <div className="flex items-center justify-between">
+    <div className="dashboard-layout">
+      <section className="surface-card">
+        <div className="dashboard-topbar" style={{ alignItems: "center" }}>
           <div>
-            <h2 className="font-medium text-slate-900">{session.label}</h2>
-            <p className="text-sm text-slate-500 mt-1">
-              Vous participez en tant que{" "}
-              <span className="font-mono font-semibold text-slate-900">{session.pseudonym}</span>
+            <span className="soft-chip">Session active</span>
+            <h2 className="page-title" style={{ marginTop: 12, fontSize: "1.45rem" }}>
+              {session.label}
+            </h2>
+            <p className="field-hint" style={{ marginTop: 8 }}>
+              Pseudonyme : <span className="field-input--mono" style={{ padding: 0 }}>{session.pseudonym}</span>
             </p>
           </div>
-          <button onClick={onLeave} className="text-sm text-slate-500 hover:text-slate-700">
+          <button onClick={onLeave} className="ghost-btn">
             Quitter
           </button>
         </div>
       </section>
 
-      <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6 mb-6">
-        <h3 className="font-medium text-slate-900 mb-3">Poser une question</h3>
-        <form onSubmit={handleSubmit} className="space-y-3">
+      <section className="surface-card surface-card--hero">
+        <h3 className="page-title" style={{ marginTop: 0, fontSize: "1.45rem" }}>
+          Poser une nouvelle question
+        </h3>
+        <p className="field-hint" style={{ marginTop: 6 }}>
+          Votre question sera visible immédiatement pour l'enseignant.
+        </p>
+        <form onSubmit={handleSubmit} className="form-stack" style={{ marginTop: 16 }}>
           <textarea
             required
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Votre question..."
-            rows={3}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+            placeholder="Tapez clairement votre question..."
+            rows={4}
+            className="field-textarea"
           />
-          {error && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
-          )}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-slate-900 text-white rounded-lg py-2 px-4 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
-          >
-            {isSubmitting ? "Envoi..." : "Envoyer"}
-          </button>
+          {error && <p className="notice notice--error">{error}</p>}
+          <div className="button-row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <span className="field-hint">Débit : max 3 questions / minute</span>
+            <button type="submit" disabled={isSubmitting} className="primary-btn">
+              {isSubmitting ? "Envoi..." : "Envoyer la question"}
+            </button>
+          </div>
         </form>
       </section>
 
-      {submittedQuestions.length > 0 && (
-        <section>
-          <h3 className="text-sm font-medium text-slate-500 mb-2">Vos questions dans cette session</h3>
-          <div className="space-y-2">
+      <section>
+        <h3 className="page-kicker" style={{ marginTop: 8 }}>Mes questions actives ({submittedQuestions.length})</h3>
+        {submittedQuestions.length === 0 ? (
+          <div className="empty-state" style={{ padding: "1.5rem 0" }}>
+            Aucune question pour le moment.
+          </div>
+        ) : (
+          <div className="mini-list mini-list--gap-lg" style={{ marginTop: 12 }}>
             {submittedQuestions.map((q) => (
               <SubmittedQuestionCard
                 key={q.id}
@@ -157,14 +165,12 @@ function QuestionSubmissionView({ token, session, onLeave }) {
                 token={token}
                 session={session}
                 onSatisfaction={(satisfaction) => handleSetSatisfaction(q.id, satisfaction)}
-                onClarificationSent={(clarification) =>
-                  setSubmittedQuestions((prev) => [...prev, clarification])
-                }
+                onClarificationSent={(clarification) => setSubmittedQuestions((prev) => [...prev, clarification])}
               />
             ))}
           </div>
-        </section>
-      )}
+        )}
+      </section>
     </div>
   );
 }
@@ -197,38 +203,35 @@ function SubmittedQuestionCard({ question, token, session, onSatisfaction, onCla
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-lg p-3 text-sm">
-      {question.parent_id && (
-        <span className="text-xs text-slate-400 block mb-1">↳ Clarification</span>
-      )}
-      <p className="text-slate-700">{question.content}</p>
+    <article className="question-card question-card--compact">
+      {question.parent_id && <span className="soft-chip" style={{ marginBottom: 8 }}>Clarification</span>}
+      <div className="question-card__meta">
+        <p style={{ margin: 0, color: "var(--text)" }}>{question.content}</p>
+        <span className={`status-chip ${question.satisfaction === "satisfied" ? "status-chip--satisfied" : question.satisfaction === "unsatisfied" ? "status-chip--danger" : "status-chip--closed"}`}>
+          {question.satisfaction === "satisfied" ? "Compris" : question.satisfaction === "unsatisfied" ? "Pas clair" : "En attente"}
+        </span>
+      </div>
 
-      <div className="flex items-center gap-2 mt-2 flex-wrap">
-        <span className="text-xs text-slate-400">La réponse vous convient-elle ?</span>
+      <div className="question-card__actions" style={{ marginTop: 12 }}>
         <button
           onClick={() => onSatisfaction("satisfied")}
-          className={`text-xs px-2 py-1 rounded-lg ${
-            question.satisfaction === "satisfied"
-              ? "bg-emerald-100 text-emerald-700"
-              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-          }`}
+          className={`secondary-btn ${question.satisfaction === "satisfied" ? "status-chip--satisfied" : ""}`}
+          type="button"
         >
-          👍 Compris
+          Compris
         </button>
         <button
           onClick={() => onSatisfaction("unsatisfied")}
-          className={`text-xs px-2 py-1 rounded-lg ${
-            question.satisfaction === "unsatisfied"
-              ? "bg-red-100 text-red-700"
-              : "bg-slate-100 text-slate-500 hover:bg-slate-200"
-          }`}
+          className={`secondary-btn ${question.satisfaction === "unsatisfied" ? "status-chip--danger" : ""}`}
+          type="button"
         >
-          👎 Pas clair
+          Pas clair
         </button>
         {isRootQuestion && (
           <button
             onClick={() => setShowClarifyForm((v) => !v)}
-            className="text-xs px-2 py-1 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200"
+            className="ghost-btn"
+            type="button"
           >
             {showClarifyForm ? "Annuler" : "Clarifier"}
           </button>
@@ -236,25 +239,21 @@ function SubmittedQuestionCard({ question, token, session, onSatisfaction, onCla
       </div>
 
       {showClarifyForm && (
-        <form onSubmit={handleClarify} className="mt-3 space-y-2">
+        <form onSubmit={handleClarify} className="form-stack" style={{ marginTop: 12 }}>
           <textarea
             required
             value={clarifyContent}
             onChange={(e) => setClarifyContent(e.target.value)}
             placeholder="Précisez votre question..."
             rows={2}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-slate-400 resize-none"
+            className="field-textarea"
           />
-          {error && <p className="text-xs text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-slate-800 text-white rounded-lg py-1.5 px-3 text-xs font-medium hover:bg-slate-700 disabled:opacity-50 transition-colors"
-          >
+          {error && <p className="notice notice--error">{error}</p>}
+          <button type="submit" disabled={isSubmitting} className="primary-btn">
             {isSubmitting ? "Envoi..." : "Envoyer la clarification"}
           </button>
         </form>
       )}
-    </div>
+    </article>
   );
 }

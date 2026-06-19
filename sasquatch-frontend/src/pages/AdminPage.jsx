@@ -7,18 +7,25 @@ export function AdminPage() {
   const { token, signOut } = useAuth();
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-xl font-semibold text-slate-900">Espace administrateur</h1>
-          <button onClick={signOut} className="text-sm text-slate-500 hover:text-slate-700">
+    <div className="page-shell page-shell--dashboard">
+      <div className="page-shell__inner dashboard-layout" style={{ maxWidth: 1100 }}>
+        <header className="dashboard-topbar">
+          <div>
+            <p className="page-kicker">Espace administrateur</p>
+            <h1 className="page-title">Gérer les accès et les désanonymisations</h1>
+            <p className="page-subtitle">
+              Les actions sensibles restent visibles, tracées et mieux séparées pour limiter les erreurs de lecture.
+            </p>
+          </div>
+          <button onClick={signOut} className="ghost-btn">
             Se déconnecter
           </button>
-        </div>
+        </header>
 
-        <CreateUserForm token={token} />
-        <div className="h-6" />
-        <DeanonymizeForm token={token} />
+        <div className="section-grid section-grid--two">
+          <CreateUserForm token={token} />
+          <DeanonymizeForm token={token} />
+        </div>
       </div>
     </div>
   );
@@ -61,9 +68,16 @@ function CreateUserForm({ token }) {
   }
 
   return (
-    <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-      <h2 className="font-medium text-slate-900 mb-4">Créer un compte</h2>
-      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+    <section className="surface-card surface-card--hero">
+      <span className="hero-badge">Création de compte</span>
+      <h2 className="page-title" style={{ marginTop: 14, fontSize: "1.55rem" }}>
+        Créer un compte
+      </h2>
+      <p className="page-subtitle">
+        Les nouveaux comptes reçoivent un e-mail d’activation et apparaissent dans le bon rôle immédiatement.
+      </p>
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3" style={{ marginTop: 18 }}>
         <Field label="Identifiant institutionnel" value={form.institutional_id} onChange={updateField("institutional_id")} />
         <Field label="Rôle" as="select" value={form.role} onChange={updateField("role")}>
           <option value="student">Étudiant</option>
@@ -76,13 +90,7 @@ function CreateUserForm({ token }) {
         </div>
 
         {feedback && (
-          <p
-            className={`col-span-2 text-sm rounded-lg px-3 py-2 border ${
-              feedback.type === "success"
-                ? "text-emerald-700 bg-emerald-50 border-emerald-200"
-                : "text-red-600 bg-red-50 border-red-200"
-            }`}
-          >
+          <p className={`col-span-2 notice ${feedback.type === "success" ? "notice--success" : "notice--error"}`}>
             {feedback.message}
           </p>
         )}
@@ -90,7 +98,7 @@ function CreateUserForm({ token }) {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="col-span-2 bg-slate-900 text-white rounded-lg py-2 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
+          className="col-span-2 primary-btn"
         >
           {isSubmitting ? "Création..." : "Créer le compte"}
         </button>
@@ -122,12 +130,15 @@ function DeanonymizeForm({ token }) {
   }
 
   return (
-    <section className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-      <h2 className="font-medium text-slate-900 mb-1">Désanonymiser une contribution</h2>
-      <p className="text-xs text-slate-500 mb-4">
+    <section className="surface-card surface-card--hero">
+      <span className="hero-badge">Action sensible</span>
+      <h2 className="page-title" style={{ marginTop: 14, fontSize: "1.55rem" }}>
+        Désanonymiser une contribution
+      </h2>
+      <p className="page-subtitle">
         Action exceptionnelle et journalisée. Une justification est obligatoire.
       </p>
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="form-stack" style={{ marginTop: 18 }}>
         <Field
           label="ID de la question (transmis par l'enseignant)"
           value={questionId}
@@ -136,25 +147,27 @@ function DeanonymizeForm({ token }) {
         <Field label="Motif" value={reason} onChange={(e) => setReason(e.target.value)} />
 
         {error && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>
+          <p className="notice notice--error">{error}</p>
         )}
 
         <button
           type="submit"
           disabled={isSubmitting}
-          className="bg-slate-900 text-white rounded-lg py-2 px-4 text-sm font-medium hover:bg-slate-800 disabled:opacity-50 transition-colors"
+          className="primary-btn"
         >
           {isSubmitting ? "Recherche..." : "Désanonymiser"}
         </button>
       </form>
 
       {result && (
-        <div className="mt-4 text-sm bg-amber-50 border border-amber-200 rounded-lg p-3 text-amber-900">
-          <p><strong>Pseudonyme :</strong> {result.pseudonym}</p>
+        <div className="notice notice--warning" style={{ marginTop: 16 }}>
+          <p style={{ marginTop: 0 }}>
+            <strong>Pseudonyme :</strong> {result.pseudonym}
+          </p>
           <p><strong>Identité :</strong> {result.prenom} {result.nom}</p>
           <p><strong>E-mail :</strong> {result.email}</p>
           <p><strong>Identifiant institutionnel :</strong> {result.institutional_id}</p>
-          <p className="text-xs text-amber-600 mt-2">Journalisé (log_id: {result.log_id})</p>
+          <p className="field-hint" style={{ marginBottom: 0 }}>Journalisé (log_id: {result.log_id})</p>
         </div>
       )}
     </section>
@@ -162,12 +175,11 @@ function DeanonymizeForm({ token }) {
 }
 
 function Field({ label, as = "input", type = "text", value, onChange, children }) {
-  const className =
-    "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400";
+  const className = as === "select" ? "field-select" : type === "email" ? "field-input" : "field-input";
 
   return (
-    <label className="block">
-      <span className="block text-sm font-medium text-slate-700 mb-1">{label}</span>
+    <label className="field">
+      <span className="field-label">{label}</span>
       {as === "select" ? (
         <select value={value} onChange={onChange} className={className}>
           {children}
