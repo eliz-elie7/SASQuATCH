@@ -7,3 +7,5 @@ passlib[bcrypt]==1.7.4
 python-dotenv==1.2.2
 pydantic[email]==2.13.4
 cryptography==49.0.0
+sentence-transformers
+scikit-learn

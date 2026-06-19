@@ -3,6 +3,7 @@ Routes liées aux questions posées par les étudiants pendant une session.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -11,6 +12,7 @@ from app.schemas import QuestionCreate, QuestionResponse, QuestionListResponse, 
 from app.dependencies import require_role
 from app.moderation import apply_moderation
 from app.websocket_manager import manager
+from app.ai_service import regrouper_questions_par_theme
 
 router = APIRouter(prefix="/questions", tags=["questions"])
 
@@ -232,3 +234,27 @@ def list_questions_by_pseudonym(
     )
 
     return QuestionListResponse(questions=results, total=len(results))
+
+
+# ── Regroupement thématique par IA (COULD HAVE §2.4.2) ──────────────────────
+
+class ClusterRequest(BaseModel):
+    questions: list[dict]
+
+
+@router.post("/cluster")
+async def cluster_questions(
+    payload: ClusterRequest,
+    themes_count: int = 3,
+    current_teacher: User = Depends(require_role(RoleEnum.teacher)),
+):
+    """
+    Regroupe sémantiquement les questions d'une session par thèmes via
+    sentence-transformers + K-Means (§2.4.2). Tout tourne en local,
+    pas d'appel API externe. Accessible enseignant uniquement.
+    """
+    try:
+        result = regrouper_questions_par_theme(payload.questions, n_clusters=themes_count)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
