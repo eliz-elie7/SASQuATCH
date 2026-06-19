@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { openSession, closeSession, banParticipant, unbanParticipant } from "../api/sessions";
-import { listSessionQuestions, listQuestionsByPseudonym } from "../api/questions";
+import { listSessionQuestions, listQuestionsByPseudonym, clusterQuestions } from "../api/questions";
 import { useSessionSocket } from "../hooks/useSessionSocket";
 import { ApiError } from "../api/client";
 
@@ -112,6 +112,8 @@ function SessionView({ token, session, onClosed }) {
   const [isClosed, setIsClosed] = useState(false);
   const [selectedPseudonym, setSelectedPseudonym] = useState(null);
   const [flagFeedback, setFlagFeedback] = useState(null);
+  const [clusters, setClusters] = useState(null);
+  const [isClustering, setIsClustering] = useState(false);
 
   const { isConnected, lastEvent } = useSessionSocket(session.id, token);
 
@@ -171,8 +173,21 @@ function SessionView({ token, session, onClosed }) {
     }
   }
 
-  function handleFlagForDeanon(question) {
-    // Pas d'appel API ici : on ne peut PAS déclencher la désanonymisation
+  async function handleCluster() {
+    setIsClustering(true);
+    try {
+      const visibleQuestions = questions.filter((q) => !q.is_filtered);
+      if (visibleQuestions.length < 2) return;
+      const result = await clusterQuestions(token, visibleQuestions);
+      setClusters(result);
+    } catch {
+      // silencieux — le clustering est un bonus, pas bloquant
+    } finally {
+      setIsClustering(false);
+    }
+  }
+
+  function handleFlagForDeanon(question) {    // Pas d'appel API ici : on ne peut PAS déclencher la désanonymisation
     // depuis l'interface enseignant (§2.3.3, réservé à l'admin). On se
     // contente d'ouvrir un brouillon d'e-mail pré-rempli vers l'admin,
     // qui décidera lui-même s'il donne suite à la demande.
@@ -230,6 +245,18 @@ function SessionView({ token, session, onClosed }) {
         </p>
       )}
 
+      {!isClosed && questions.filter((q) => !q.is_filtered).length >= 2 && (
+        <div className="mb-4">
+          <button
+            onClick={handleCluster}
+            disabled={isClustering}
+            className="text-sm px-4 py-2 rounded-lg bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 disabled:opacity-50 transition-colors"
+          >
+            {isClustering ? "Analyse en cours..." : "🧩 Regrouper par thèmes (IA)"}
+          </button>
+        </div>
+      )}
+
       <section className="space-y-3">
         {questions.length === 0 && (
           <p className="text-sm text-slate-400 text-center py-8">Aucune question pour l'instant.</p>
@@ -264,6 +291,10 @@ function SessionView({ token, session, onClosed }) {
         <div className="fixed bottom-6 right-6 bg-slate-900 text-white text-sm rounded-lg px-4 py-2 shadow-lg">
           {flagFeedback}
         </div>
+      )}
+
+      {clusters && (
+        <ClusterModal clusters={clusters} onClose={() => setClusters(null)} />
       )}
 
       {selectedPseudonym && (
@@ -397,6 +428,50 @@ function PseudonymThreadModal({ token, sessionId, pseudonym, onClose }) {
               {q.is_filtered && (
                 <span className="text-xs mt-1 block">Filtrée ({q.filter_reason})</span>
               )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClusterModal({ clusters, onClose }) {
+  const themeColors = [
+    "bg-violet-50 border-violet-200 text-violet-900",
+    "bg-blue-50 border-blue-200 text-blue-900",
+    "bg-emerald-50 border-emerald-200 text-emerald-900",
+    "bg-amber-50 border-amber-200 text-amber-900",
+    "bg-red-50 border-red-200 text-red-900",
+  ];
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium text-slate-900">🧩 Regroupement thématique</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-sm">
+            Fermer
+          </button>
+        </div>
+        <p className="text-xs text-slate-400 mb-4">
+          Regroupement automatique par similarité sémantique (IA locale). Les noms de thèmes sont génériques.
+        </p>
+        <div className="space-y-4">
+          {Object.entries(clusters).map(([theme, qs], i) => (
+            <div key={theme} className={`rounded-lg border p-3 ${themeColors[i % themeColors.length]}`}>
+              <p className="text-xs font-semibold mb-2">{theme} — {qs.length} question{qs.length > 1 ? "s" : ""}</p>
+              <div className="space-y-1">
+                {qs.map((q) => (
+                  <p key={q.id} className="text-xs opacity-80">• {q.content}</p>
+                ))}
+              </div>
             </div>
           ))}
         </div>

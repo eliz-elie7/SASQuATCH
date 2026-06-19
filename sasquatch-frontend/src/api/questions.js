@@ -31,3 +31,15 @@ export function setSatisfaction(token, questionId, satisfaction) {
     body: { satisfaction },
   });
 }
+
+/**
+ * Regroupe sémantiquement les questions par thèmes (IA locale,
+ * sentence-transformers + K-Means). Retourne { "Thème 1": [...], ... }.
+ */
+export function clusterQuestions(token, questions, themesCount = 3) {
+  return apiFetch(`/questions/cluster?themes_count=${themesCount}`, {
+    method: "POST",
+    token,
+    body: { questions },
+  });
+}
