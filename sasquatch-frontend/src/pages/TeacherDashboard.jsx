@@ -108,16 +108,17 @@ function SessionView({ token, session, onClosed }) {
   const [flagFeedback, setFlagFeedback] = useState(null);
   const [clusters, setClusters] = useState(null);
   const [isClustering, setIsClustering] = useState(false);
+  const [showFiltered, setShowFiltered] = useState(false);
 
   const { isConnected, lastEvent } = useSessionSocket(session.id, token);
 
   useEffect(() => {
-    listSessionQuestions(token, session.id)
+    listSessionQuestions(token, session.id, showFiltered)
       .then((data) => setQuestions(data.questions))
       .catch(() => {
         /* silencieux */
       });
-  }, [session.id, token]);
+  }, [session.id, token, showFiltered]);
 
   useEffect(() => {
     if (!lastEvent) return;
@@ -203,6 +204,7 @@ function SessionView({ token, session, onClosed }) {
   }
 
   const visibleQuestions = questions.filter((question) => !question.is_filtered);
+  const filteredQuestions = questions.filter((question) => question.is_filtered);
 
   return (
     <div className="dashboard-layout">
@@ -219,6 +221,13 @@ function SessionView({ token, session, onClosed }) {
           </div>
           <div className="topbar-actions">
             <StatusBadge isConnected={isConnected} isClosed={isClosed} />
+            <button
+              onClick={() => setShowFiltered((value) => !value)}
+              className="secondary-btn"
+              type="button"
+            >
+              {showFiltered ? "Masquer filtrées" : `Voir filtrées (${filteredQuestions.length})`}
+            </button>
             {!isClosed && (
               <button onClick={handleClose} className="ghost-btn">
                 Clôturer
@@ -307,7 +316,17 @@ function QuestionCard({ question, isBanned, onToggleBan, onSelectPseudonym, onFl
           >
             {question.pseudonym}
           </button>
+          {question.is_filtered && (
+            <span className="status-chip status-chip--warning" style={{ alignSelf: "flex-start" }}>
+              Filtrée
+            </span>
+          )}
           <p style={{ margin: 0, fontSize: "0.98rem", lineHeight: 1.6 }}>{question.content}</p>
+          {question.is_filtered && question.filter_reason && (
+            <p className="field-hint" style={{ margin: 0 }}>
+              {question.filter_reason}
+            </p>
+          )}
           <SatisfactionBadge satisfaction={question.satisfaction} />
         </div>
         <div className="question-card__actions">
@@ -361,6 +380,11 @@ function PseudonymThreadModal({ token, sessionId, pseudonym, onClose }) {
             <div key={question.id} className="question-card question-card--compact">
               {question.parent_id && <span className="soft-chip" style={{ marginBottom: 8 }}>Clarification</span>}
               <p style={{ margin: 0 }}>{question.content}</p>
+              {question.is_filtered && question.filter_reason && (
+                <p className="field-hint" style={{ margin: "6px 0 0" }}>
+                  Filtrée : {question.filter_reason}
+                </p>
+              )}
               {question.is_filtered && (
                 <span className="status-chip status-chip--warning" style={{ marginTop: 8 }}>
                   Filtrée ({question.filter_reason})
